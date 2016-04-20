@@ -4,7 +4,6 @@ import re
 import bayes
 import threading
 import pyttsx
-import pyaudio
 import featurize
 import speech_recognition as sr
 from collections import defaultdict
@@ -14,8 +13,8 @@ from sklearn.naive_bayes import MultinomialNB as MNB
 HOST = "irc.twitch.tv"              # the Twitch IRC server
 PORT = 6667                         # always use port 6667!
 NICK = "greenautobot"            # your Twitch username, lowercase
-PASS = "oauth:qn07h0fx8g00oh7nvkg4w2a3aoiqhw" # your Twitch OAuth token
-CHAN = "#glitchymon"                   # the channel you want to join
+PASS = "oauth:XXXXXXXXXX" # your Twitch OAuth token
+CHAN = "#CHANNEL"                   # the channel you want to join
 
 def chat(sock, msg):
     sock.send("PRIVMSG #{} :{}".format(cfg.CHAN, msg))
@@ -34,11 +33,11 @@ s.send("NICK {}\r\n".format(NICK).encode("utf-8"))
 s.send("JOIN {}\r\n".format(CHAN).encode("utf-8"))
 
 CHAT_MSG=re.compile(r"^:\w+!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :")
-train = True
-read = False
-yesNo = None
+train = True # are we in training mode?
+read = False # or are we in reading mode?
+yesNo = None # variable used to tell the model if the current chat message should be used as a positive or negative training example
 lastProcessed = True
-freq = 2
+freq = 2 # frequency of messages read
 
 def pong_and_read():
     bayes = MNB()
@@ -57,10 +56,10 @@ def pong_and_read():
             if not re.match("^:\w+!\w+@\w", message) and not re.match("\w+\.tmi\.twitch\.tv", message):
                 print(username + ": " + message)
 
-                if message == "!train": #and username == CHAN (commented for testing, this ensures only the channel owner can use the commands)
+                if message == "!train": 
                     train = True
                     
-                if message == "!read": #and username == CHAN
+                if message == "!read": 
                     read = True
                     
                 if train == True:
@@ -72,11 +71,9 @@ def pong_and_read():
                         lastProcessed = False
                         
                     if yesNo != None and lastProcessed == False:
-                        print read_message, "MESSAGE WHICH IS TRAINING ON"
                         word_count = defaultdict(int)
-                        print featurize.generate_feature_vector(read_message, word_count), "FEATURIZE\n\n"
                         if yesNo == True:
-                            bayes.partial_fit(featurize.generate_feature_vector(read_message, word_count), [1], classes=[0,1])
+                            bayes.partial_fit(featurize.generate_feature_vector(read_message, word_count), [1], classes=[0,1]) #generate feature vectors to convert chat messages to usable form for naive bayes model
                         if yesNo == False:
                             bayes.partial_fit(featurize.generate_feature_vector(read_message, word_count), [0], classes=[0,1])
                         lastProcessed = True
